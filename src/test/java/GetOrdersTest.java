@@ -7,7 +7,7 @@ import org.junit.Test;
 
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class GetOrdersTest {
 
@@ -25,7 +25,7 @@ public class GetOrdersTest {
         Response response = orderApi.getOrdersListWithLimitOne();
         assertEquals("Неверный статус код", SC_OK, response.statusCode());
         Integer idActual = response.path("orders[0].id");
-        idActual.equals(notNullValue());
+        assertNotNull(idActual);
     }
 
 }

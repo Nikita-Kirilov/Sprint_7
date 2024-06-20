@@ -12,6 +12,7 @@ import org.junit.Test;
 import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class LogInCourierTest {
     private CourierApi courierApi;
@@ -56,7 +57,7 @@ public class LogInCourierTest {
         Response response = courierApi.postFindIdCourier(findCourier);
         assertEquals("Неверный статус код", SC_OK, response.statusCode());
         Integer idActual = response.path("id");
-        idActual.equals(notNullValue());
+        assertNotNull(idActual);
 
         courierId = idActual.toString();
 

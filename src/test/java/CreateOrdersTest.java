@@ -13,6 +13,7 @@ import java.util.List;
 import static org.apache.http.HttpStatus.SC_CREATED;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @RunWith(Parameterized.class)
 public class CreateOrdersTest {
@@ -48,7 +49,7 @@ public class CreateOrdersTest {
         Response response = orderApi.postCreateOrders(order);
         assertEquals("Неверный статус код", SC_CREATED, response.statusCode());
         Integer idActual = response.path("track");
-        idActual.equals(notNullValue());
+        assertNotNull(idActual);
     }
 
 }
