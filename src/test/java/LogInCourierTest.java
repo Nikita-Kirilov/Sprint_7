@@ -1,211 +1,177 @@
+import api.CourierApi;
 import data.CreateCourier;
 import data.FindCourier;
-import data.FindCourierWithoutLogin;
-import data.FindCourierWithoutPassword;
 import feature.RandomLogin;
-import io.qameta.allure.Description;
-import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertEquals;
 
 public class LogInCourierTest {
+    private CourierApi courierApi;
+    private RandomLogin randomLogin = new RandomLogin();
+    private String courierId;
 
-    RandomLogin randomLogin = new RandomLogin();
+    private static final String message404Expected = "Учетная запись не найдена";
+    private static final String message400Expected = "Недостаточно данных для входа";
+
     @Before
     public void setUp() {
-        RestAssured.baseURI= "https://qa-scooter.praktikum-services.ru";
+        RestAssured.baseURI= UrlConstants.BASE_URI;
+    }
+
+    @After
+    public void teardown() {
+        //Удаление курьера
+        courierApi.deleteCourier(courierId);
     }
 
     @Test
     @DisplayName("Проверка корректной авторизации курьера. 200")
     public void checkCourierLogIn() {
+        courierApi = new CourierApi();
+
         String unicLogin = "Sasha" + randomLogin.randomText(6);
-        CreateCourier courier = new CreateCourier(unicLogin,
-                "123Mimino_567","Sasha");
+
+        CreateCourier courier = new CreateCourier()
+                .withLogin(unicLogin)
+                .withPassword("123Mimino_567")
+                .withFirstName("Sasha");
 
         //Создание курьера
-        postCreateCourier(courier);
+        courierApi.postCreateCourier(courier);
 
 
-        FindCourier findCourier = new FindCourier(courier.login,courier.password);
+        FindCourier findCourier = new FindCourier()
+                .withLogin(courier.getLogin())
+                .withPassword(courier.getPassword());
 
         //Проверка авторизации курьера в системе и запись id в переменную
-        String courierId = postFindIdCourier(findCourier);
+        Response response = courierApi.postFindIdCourier(findCourier);
+        assertEquals("Неверный статус код", SC_OK, response.statusCode());
+        Integer idActual = response.path("id");
+        idActual.equals(notNullValue());
 
-        //Удаление курьера
-        deleteCourier(courierId);
+        courierId = idActual.toString();
+
+
     }
 
     @Test
     @DisplayName("Проверка авторизации курьера с несуществующими логином/паролем. 404")
     public void checkCourierLogInNotExist() {
+        courierApi = new CourierApi();
         String unicLogin = "Sasha" + randomLogin.randomText(6);
         String unicPassword = "Mimino" + randomLogin.randomText(6);
-        String message = "Учетная запись не найдена";
 
-        FindCourier findCourier = new FindCourier(unicLogin,unicPassword);
+        FindCourier findCourier = new FindCourier()
+                .withLogin(unicLogin)
+                .withPassword(unicPassword);
 
-        postFindIdCourierNotExist(findCourier, message);
+        Response response = courierApi.postFindIdCourier(findCourier);
+        String messageActual = response.path("message");
+        assertEquals("Неверный статус код", SC_NOT_FOUND, response.statusCode());
+        assertEquals("Некорректый ответ в Body", message404Expected, messageActual);
     }
 
     @Test
     @DisplayName("Проверка авторизации курьера без передачи логина. 400")
     public void checkCourierLogInWithoutLogin() {
+        courierApi = new CourierApi();
         String unicPassword = "Mimino" + randomLogin.randomText(6);
-        String message = "Недостаточно данных для входа";
 
-        FindCourierWithoutLogin findCourier = new FindCourierWithoutLogin(unicPassword);
+        FindCourier findCourier = new FindCourier()
+                .withPassword(unicPassword);
 
-        postFindIdCourierWithoutLogin(findCourier, message);
+        Response response = courierApi.postFindIdCourier(findCourier);
+        String messageActual = response.path("message");
+        assertEquals("Неверный статус код", SC_BAD_REQUEST, response.statusCode());
+        assertEquals("Некорректый ответ в Body", message400Expected, messageActual);
     }
 
     @Test
     @DisplayName("Проверка авторизации курьера без передачи пароля. 400")
     public void checkCourierLogInWithoutPassword() {
+        courierApi = new CourierApi();
         String unicLogin = "Sasha" + randomLogin.randomText(6);
         String message = "Недостаточно данных для входа";
 
-        FindCourierWithoutPassword findCourier = new FindCourierWithoutPassword(unicLogin);
+        FindCourier findCourier = new FindCourier()
+                .withLogin(unicLogin);
 
-        postFindIdCourierWithoutPassword(findCourier, message);
+        Response response = courierApi.postFindIdCourier(findCourier);
+        assertEquals("Неверный статус код", SC_BAD_REQUEST, response.statusCode());
+        String messageActual = response.path("message");
+        assertEquals("Некорректый ответ в Body", message400Expected, messageActual);
     }
 
     @Test
     @DisplayName("Проверка авторизации курьера с несуществующим логином. 404")
     public void checkCourierLogInNotExistLogin() {
+        courierApi = new CourierApi();
         String unicLogin = "Sasha" + randomLogin.randomText(6);
-        CreateCourier courier = new CreateCourier(unicLogin,
-                "123Mimino_567","Sasha");
-        String message = "Учетная запись не найдена";
+        CreateCourier courier = new CreateCourier()
+                .withLogin(unicLogin)
+                .withPassword("123Mimino_567")
+                .withFirstName("Sasha");
 
         //Создание курьера
-        postCreateCourier(courier);
+        courierApi.postCreateCourier(courier);
 
-        FindCourier findCourier = new FindCourier("NotExistLogin",courier.password);
-        FindCourier findCourierForCleanTest = new FindCourier(courier.login,courier.password);
+        FindCourier findCourier = new FindCourier()
+                .withLogin("NotExistLogin")
+                .withPassword(courier.getPassword());
 
-        postFindIdCourierNotExist(findCourier, message);
+        FindCourier findCourierForCleanTest = new FindCourier()
+                .withLogin(courier.getLogin())
+                .withPassword(courier.getPassword());
+
+        // Проверка авторизации курьера с несуществующим логином
+        Response response = courierApi.postFindIdCourier(findCourier);
+        assertEquals("Неверный статус код", SC_NOT_FOUND, response.statusCode());
+        String messageActual = response.path("message");
+        assertEquals("Некорректый ответ в Body", message404Expected, messageActual);
+
         // Поиск Id курьера для дальнейшего удаления
-        String courierId = postFindIdCourier(findCourierForCleanTest);
-        //Удаление курьера
-        deleteCourier(courierId);
-
+        Response responseFindCourierForCleanTest = courierApi.postFindIdCourier(findCourierForCleanTest);
+        courierId = responseFindCourierForCleanTest.path("id").toString();
     }
 
     @Test
     @DisplayName("Проверка авторизации курьера с несуществующим паролем. 404")
     public void checkCourierLogInNotExistPassword() {
+        courierApi = new CourierApi();
         String unicLogin = "Sasha" + randomLogin.randomText(6);
-        CreateCourier courier = new CreateCourier(unicLogin,
-                "123Mimino_567","Sasha");
-        String message = "Учетная запись не найдена";
+        CreateCourier courier = new CreateCourier()
+                .withLogin(unicLogin)
+                .withPassword("123Mimino_567")
+                .withFirstName("Sasha");
 
         //Создание курьера
-        postCreateCourier(courier);
+        courierApi.postCreateCourier(courier);
 
-        FindCourier findCourier = new FindCourier(courier.login,"NotExistPassword");
-        FindCourier findCourierForCleanTest = new FindCourier(courier.login,courier.password);
+        FindCourier findCourier = new FindCourier()
+                .withLogin(courier.getLogin())
+                .withPassword("NotExistPassword");
 
-        postFindIdCourierNotExist(findCourier, message);
+        FindCourier findCourierForCleanTest = new FindCourier()
+                .withLogin(courier.getLogin())
+                .withPassword(courier.getPassword());
+
+        //Проверка авторизации курьера с несуществующим паролем
+        Response response = courierApi.postFindIdCourier(findCourier);
+        String messageActual = response.path("message");
+        assertEquals("Неверный статус код", SC_NOT_FOUND, response.statusCode());
+        assertEquals("Некорректый ответ в Body", message404Expected, messageActual);
+
         // Поиск Id курьера для дальнейшего удаления
-        String courierId = postFindIdCourier(findCourierForCleanTest);
-        //Удаление курьера
-        deleteCourier(courierId);
-    }
-
-    @Step("Send success POST request to /api/v1/courier")
-    @Description("Успешное создание курьера")
-    public void postCreateCourier(CreateCourier courier) {
-        Response response =
-                given()
-                        .header("Content-type", "application/json")
-                        .and()
-                        .body(courier)
-                        .when()
-                        .post("/api/v1/courier");
-        response.then().assertThat()
-                .statusCode(201)
-                .and()
-                .body("ok",equalTo(true));
-    }
-
-    @Step("Send success POST request to /api/v1/courier/login")
-    @Description("поиск id курьера по логину / паролю и запись его в String переменную")
-    public String postFindIdCourier(FindCourier findCourier) {
-        String courierId =
-                given()
-                        .header("Content-type", "application/json")
-                        .and()
-                        .body(findCourier)
-                        .when()
-                        .post("/api/v1/courier/login")
-                        .then().assertThat()
-                        .statusCode(200)
-                        .and()
-                        .body("id", notNullValue())
-                        .extract().body().path("id").toString();
-        return courierId;
-    }
-
-    @Step("Send failed POST request to /api/v1/courier/login with login/password not exist")
-    @Description("поиск id курьера по логину / паролю, которых не существует")
-    public void postFindIdCourierNotExist(FindCourier findCourier, String message) {
-                given()
-                        .header("Content-type", "application/json")
-                        .and()
-                        .body(findCourier)
-                        .when()
-                        .post("/api/v1/courier/login")
-                        .then().assertThat()
-                        .statusCode(404)
-                        .and()
-                        .body("message",equalTo(message));
-    }
-
-    @Step("Send failed POST request to /api/v1/courier/login without login")
-    @Description("поиск id курьера по логину / паролю, без передачи логина")
-    public void postFindIdCourierWithoutLogin(FindCourierWithoutLogin findCourier, String message) {
-        given()
-                .header("Content-type", "application/json")
-                .and()
-                .body(findCourier)
-                .when()
-                .post("/api/v1/courier/login")
-                .then().assertThat()
-                .statusCode(400)
-                .and()
-                .body("message",equalTo(message));
-    }
-
-    @Step("Send failed POST request to /api/v1/courier/login without password")
-    @Description("поиск id курьера по логину / паролю, без передачи пароля")
-    public void postFindIdCourierWithoutPassword(FindCourierWithoutPassword findCourier, String message) {
-        given()
-                .header("Content-type", "application/json")
-                .and()
-                .body(findCourier)
-                .when()
-                .post("/api/v1/courier/login")
-                .then().assertThat()
-                .statusCode(400)
-                .and()
-                .body("message",equalTo(message));
-    }
-
-    @Step("Send DELETE request to /api/v1/courier/{id}")
-    @Description("удаление данных курьера по id")
-    public void deleteCourier(String courierId) {
-        given()
-                .pathParam("id", courierId)
-                .when()
-                .delete("/api/v1/courier/{id}")
-                .then().assertThat().statusCode(200);
+        Response responseFindCourierForCleanTest = courierApi.postFindIdCourier(findCourierForCleanTest);
+        courierId = responseFindCourierForCleanTest.path("id").toString();
     }
 }

@@ -2,12 +2,24 @@ package data;
 
 public class FindCourier {
 
-    public final String login;
-    public final String password;
+    private String login;
+    private String password;
 
-    public FindCourier(String login, String password) {
+    public FindCourier withLogin(String login) {
         this.login = login;
-        this.password = password;
+        return this;
     }
 
+    public FindCourier withPassword(String password) {
+        this.password = password;
+        return this;
+    }
+
+    public String getLogin() {
+        return login;
+    }
+
+    public String getPassword() {
+        return password;
+    }
 }

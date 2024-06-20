@@ -1,38 +1,31 @@
-import data.CreateOrders;
-import io.qameta.allure.Description;
-import io.qameta.allure.Step;
+import api.OrderApi;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import org.junit.Before;
 import org.junit.Test;
 
-import static io.restassured.RestAssured.given;
+import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.Assert.assertEquals;
 
 public class GetOrdersTest {
+
+    OrderApi orderApi;
     @Before
     public void setUp() {
-        RestAssured.baseURI= "https://qa-scooter.praktikum-services.ru";
+        RestAssured.baseURI= UrlConstants.BASE_URI;
     }
 
     @Test
     @DisplayName("Проверка успешного получения списка заказов с лимитом заказа = 1")
     public void getOrdersListLimitOneSuccess() {
-        getOrdersListWithLimitOne();
+        orderApi = new OrderApi();
+
+        Response response = orderApi.getOrdersListWithLimitOne();
+        assertEquals("Неверный статус код", SC_OK, response.statusCode());
+        Integer idActual = response.path("orders[0].id");
+        idActual.equals(notNullValue());
     }
 
-    @Step("Send success GET request to /api/v1/orders with params limit=1")
-    @Description("Успешное получение списка заказов с лимитом заказа = 1")
-    public void getOrdersListWithLimitOne() {
-        Response response =
-                given()
-                        .queryParam("limit", 1)
-                        .when()
-                        .get("/api/v1/orders/");
-        response.then().assertThat()
-                .statusCode(200)
-                .and()
-                .body("orders[0].id", notNullValue());
-    }
 }
